@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  fullName     String   @db.VarChar(191)
+  email        String   @unique @db.VarChar(191)
+  password     String   @db.VarChar(255)
+  phone        String   @db.VarChar(20)
+  address      String
+  refreshToken String?
+  createdAt    DateTime @default(now())
+  roleId       Int      @default(1)
+
+  role          Role              @relation(fields: [roleId], references: [id])
+  orders        Order[]
+  cartItems     CartItem[]
+  reviews       Review[]
+  newsPosts     News[]            @relation("UserNews")
+  categories    Category[]        @relation("CategoryAuthor")
+  notifications Notification[]
+  favorites     FavoriteProduct[]
+}
+
+model Role {
+  id          Int              @id @default(autoincrement())
+  name        String           @unique @db.VarChar(50)
+  users       User[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id        Int              @id @default(autoincrement())
+  name      String           @db.VarChar(100)
+  method    String           @db.VarChar(10)
+  route     String           @db.VarChar(255)
+  slug      String?
+  roles     RolePermission[]
+  createdAt DateTime         @default(now())
+}
+
+model RolePermission {
+  id           Int     @id @default(autoincrement())
+  roleId       Int
+  permissionId Int
+  active       Boolean
+
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(191)
+  slug      String   @db.VarChar(191)
+  authorId  Int
+  createdAt DateTime @default(now())
+
+  author   User      @relation("CategoryAuthor", fields: [authorId], references: [id])
+  products Product[]
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(255)
+  description String   @db.Text
+  price       Decimal  @db.Decimal(10, 2)
+  stock       Int
+  content     String   @db.LongText
+  imageUrls   Json
+  categoryId  Int
+  createdAt   DateTime @default(now())
+
+  category   Category          @relation(fields: [categoryId], references: [id])
+  orderItems OrderItem[]
+  cartItems  CartItem[]
+  reviews    Review[]
+  favorites  FavoriteProduct[]
+}
+
+model Order {
+  id          Int         @id @default(autoincrement())
+  userId      Int
+  orderDate   DateTime    @default(now())
+  shippedDate DateTime?
+  shipName    String      @db.VarChar(255)
+  shipAddress String
+  shipPhone   String      @db.VarChar(20)
+  status      OrderStatus @default(pending)
+  note        String?
+  totalPrice  Int
+  createdAt   DateTime    @default(now())
+
+  user       User        @relation(fields: [userId], references: [id])
+  orderItems OrderItem[]
+}
+
+enum OrderStatus {
+  pending
+  paid
+  shipped
+  cancelled
+}
+
+model OrderItem {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  productId Int
+  quantity  Int
+  price     Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  productId Int
+  quantity  Int
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  productId Int
+  rating    Int
+  comment   String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model News {
+  id        Int      @id @default(autoincrement())
+  title     String   @db.VarChar(255)
+  slug      String   @db.VarChar(255)
+  desc      String   @db.Text
+  content   String   @db.LongText
+  thumbnail String   @db.VarChar(255)
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  authorId Int
+  author   User @relation("UserNews", fields: [authorId], references: [id])
+}
+
+model Notification {
+  id        Int              @id @default(autoincrement())
+  userId    Int?             @map("userId")
+  user      User?            @relation(fields: [userId], references: [id])
+  type      NotificationType @default(SYSTEM)
+  title     String           @db.VarChar(255)
+  message   String
+  isRead    Boolean          @default(false)
+  data      Json?
+  createdAt DateTime         @default(now())
+}
+
+enum NotificationType {
+  ORDER
+  PROMOTION
+  SYSTEM
+  CHAT
+}
+
+model FavoriteProduct {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  productId Int
+  createdAt DateTime @default(now())
+  active    Boolean  @default(false) // Đánh dấu yêu thích đang hoạt động hay không
+
+  /// Relations
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
