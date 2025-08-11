@@ -1,19 +1,65 @@
 "use strict";
+/**
+ * @fileoverview Order Management Controller
+ * @description Xử lý logic quản lý đơn hàng (CRUD operations)
+ * @author Your Name
+ * @version 1.0.0
+ */
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteOrderById = exports.updateOrderById = exports.getAllOrders = exports.getOrdersByUserId = exports.getOrderById = exports.createOrder = void 0;
 const client_1 = __importDefault(require("../client"));
-// Tạo mới đơn hàng
+/**
+ * @function createOrder
+ * @description Tạo đơn hàng mới từ giỏ hàng của người dùng
+ * @param {Request} req - Express request object với body data
+ * @param {Response} res - Express response object
+ * @returns {Promise<void>}
+ *
+ * @example
+ * // POST /create-order
+ * // Request body
+ * {
+ *   "userId": 1,
+ *   "items": [
+ *     {
+ *       "productId": 1,
+ *       "quantity": 2,
+ *       "price": 25000000
+ *     }
+ *   ],
+ *   "shipName": "Nguyen Van A",
+ *   "shipAddress": "123 ABC Street",
+ *   "totalPrice": 50000000,
+ *   "note": "Giao hàng giờ hành chính",
+ *   "shipPhone": "0123456789",
+ *   "status": "pending"
+ * }
+ *
+ * // Response
+ * {
+ *   "message": "Order created successfully.",
+ *   "data": {
+ *     "id": 1,
+ *     "userId": 1,
+ *     "shipName": "Nguyen Van A",
+ *     "totalPrice": 50000000,
+ *     "status": "pending",
+ *     "orderItems": [...]
+ *   }
+ * }
+ */
 const createOrder = async (req, res) => {
     try {
-        const { userId, items, shipName, shipAddress, totalPrice, note, shipPhone, shippedDate, status, } = req.body;
+        const { userId, items, shipName, shipAddress, totalPrice, note, shipPhone, shippedDate, status } = req.body;
+        // Kiểm tra dữ liệu đầu vào bắt buộc
         if (!userId || !items || !Array.isArray(items) || items.length === 0) {
             res.status(400).json({ message: "Missing order info." });
             return;
         }
-        // Tạo order và orderItems cùng lúc
+        // Tạo order và orderItems cùng lúc sử dụng nested create
         const order = await client_1.default.order.create({
             data: {
                 userId,
@@ -44,10 +90,49 @@ const createOrder = async (req, res) => {
     }
 };
 exports.createOrder = createOrder;
-// Lấy đơn hàng theo id
+/**
+ * @function getOrderById
+ * @description Lấy thông tin chi tiết của một đơn hàng theo ID
+ * @param {Request} req - Express request object với params.id
+ * @param {Response} res - Express response object
+ * @returns {Promise<void>}
+ *
+ * @example
+ * // GET /get-order/1
+ * // Response
+ * {
+ *   "message": "Fetched order successfully.",
+ *   "data": {
+ *     "id": 1,
+ *     "userId": 1,
+ *     "shipName": "Nguyen Van A",
+ *     "totalPrice": 50000000,
+ *     "status": "pending",
+ *     "orderItems": [
+ *       {
+ *         "id": 1,
+ *         "productId": 1,
+ *         "quantity": 2,
+ *         "price": 25000000,
+ *         "product": {
+ *           "id": 1,
+ *           "name": "Laptop Gaming",
+ *           "price": 25000000
+ *         }
+ *       }
+ *     ],
+ *     "user": {
+ *       "id": 1,
+ *       "fullName": "John Doe",
+ *       "email": "john@example.com"
+ *     }
+ *   }
+ * }
+ */
 const getOrderById = async (req, res) => {
     try {
         const { id } = req.params;
+        // Tìm đơn hàng với thông tin chi tiết
         const order = await client_1.default.order.findUnique({
             where: { id: Number(id) },
             include: {
@@ -70,13 +155,48 @@ const getOrderById = async (req, res) => {
     }
 };
 exports.getOrderById = getOrderById;
-// Lấy tất cả đơn hàng của user
+/**
+ * @function getOrdersByUserId
+ * @description Lấy tất cả đơn hàng của một người dùng với phân trang
+ * @param {Request} req - Express request object với params.userId và query params
+ * @param {Response} res - Express response object
+ * @returns {Promise<void>}
+ *
+ * @example
+ * // GET /orders-of-user/1?page=1&pageSize=10
+ * // Response
+ * {
+ *   "message": "Fetched user's orders successfully.",
+ *   "data": [
+ *     {
+ *       "id": 1,
+ *       "userId": 1,
+ *       "shipName": "Nguyen Van A",
+ *       "totalPrice": 50000000,
+ *       "status": "pending",
+ *       "orderItems": [...],
+ *       "user": {
+ *         "id": 1,
+ *         "fullName": "John Doe",
+ *         "email": "john@example.com"
+ *       }
+ *     }
+ *   ],
+ *   "pagination": {
+ *     "page": 1,
+ *     "pageSize": 10,
+ *     "total": 25,
+ *     "totalPages": 3
+ *   }
+ * }
+ */
 const getOrdersByUserId = async (req, res) => {
     try {
         const { userId } = req.params;
         const page = Number(req.query.page) || 1;
         const pageSize = Number(req.query.pageSize) || 10;
         const skip = (page - 1) * pageSize;
+        // Lấy đơn hàng và tổng số đơn hàng cùng lúc
         const [orders, total] = await Promise.all([
             client_1.default.order.findMany({
                 where: { userId: Number(userId) },
@@ -118,13 +238,47 @@ const getOrdersByUserId = async (req, res) => {
     }
 };
 exports.getOrdersByUserId = getOrdersByUserId;
-// Lấy tất cả đơn hàng (admin)
-// Lấy tất cả đơn hàng (admin)
+/**
+ * @function getAllOrders
+ * @description Lấy tất cả đơn hàng trong hệ thống (dành cho admin) với phân trang
+ * @param {Request} req - Express request object với query params
+ * @param {Response} res - Express response object
+ * @returns {Promise<void>}
+ *
+ * @example
+ * // GET /orders?page=1&pageSize=10
+ * // Response
+ * {
+ *   "message": "Fetched all orders successfully.",
+ *   "data": [
+ *     {
+ *       "id": 1,
+ *       "userId": 1,
+ *       "shipName": "Nguyen Van A",
+ *       "totalPrice": 50000000,
+ *       "status": "pending",
+ *       "orderItems": [...],
+ *       "user": {
+ *         "id": 1,
+ *         "fullName": "John Doe",
+ *         "email": "john@example.com"
+ *       }
+ *     }
+ *   ],
+ *   "pagination": {
+ *     "page": 1,
+ *     "pageSize": 10,
+ *     "total": 100,
+ *     "totalPages": 10
+ *   }
+ * }
+ */
 const getAllOrders = async (req, res) => {
     try {
         const page = Number(req.query.page) || 1;
         const pageSize = Number(req.query.pageSize) || 10;
         const skip = (page - 1) * pageSize;
+        // Lấy tất cả đơn hàng và tổng số đơn hàng
         const [orders, total] = await Promise.all([
             client_1.default.order.findMany({
                 include: {
@@ -157,11 +311,35 @@ const getAllOrders = async (req, res) => {
     }
 };
 exports.getAllOrders = getAllOrders;
-// Cập nhật đơn hàng
+/**
+ * @function updateOrderById
+ * @description Cập nhật trạng thái đơn hàng (dành cho admin)
+ * @param {Request} req - Express request object với params.id và body data
+ * @param {Response} res - Express response object
+ * @returns {Promise<void>}
+ *
+ * @example
+ * // PUT /update-order/1
+ * // Request body
+ * {
+ *   "status": "shipped"
+ * }
+ *
+ * // Response
+ * {
+ *   "message": "Order updated successfully.",
+ *   "data": {
+ *     "id": 1,
+ *     "userId": 1,
+ *     "status": "shipped"
+ *   }
+ * }
+ */
 const updateOrderById = async (req, res) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
+        // Cập nhật trạng thái đơn hàng
         const order = await client_1.default.order.update({
             where: { id: Number(id) },
             data: { status },
@@ -169,6 +347,7 @@ const updateOrderById = async (req, res) => {
         res.json({ message: "Order updated successfully.", data: order });
     }
     catch (error) {
+        // Xử lý lỗi khi đơn hàng không tồn tại
         if (error.code === "P2025") {
             res.status(404).json({ message: "Order not found." });
             return;
@@ -177,16 +356,37 @@ const updateOrderById = async (req, res) => {
     }
 };
 exports.updateOrderById = updateOrderById;
-// Xoá đơn hàng
+/**
+ * @function deleteOrderById
+ * @description Xóa đơn hàng khỏi hệ thống (dành cho admin)
+ * @param {Request} req - Express request object với params.id
+ * @param {Response} res - Express response object
+ * @returns {Promise<void>}
+ *
+ * @example
+ * // DELETE /delete-order/1
+ * // Response
+ * {
+ *   "message": "Order deleted successfully.",
+ *   "data": {
+ *     "id": 1,
+ *     "userId": 1,
+ *     "shipName": "Nguyen Van A",
+ *     "totalPrice": 50000000
+ *   }
+ * }
+ */
 const deleteOrderById = async (req, res) => {
     try {
         const { id } = req.params;
+        // Xóa đơn hàng theo ID
         const deleted = await client_1.default.order.delete({
             where: { id: Number(id) },
         });
         res.json({ message: "Order deleted successfully.", data: deleted });
     }
     catch (error) {
+        // Xử lý lỗi khi đơn hàng không tồn tại
         if (error.code === "P2025") {
             res.status(404).json({ message: "Order not found." });
             return;

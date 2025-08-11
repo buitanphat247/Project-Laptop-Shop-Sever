@@ -1,15 +1,58 @@
 "use strict";
+/**
+ * @fileoverview Shopping Cart Management Controller
+ * @description Xử lý logic quản lý giỏ hàng (thêm, xem, cập nhật, xóa sản phẩm) với stock management và transactions
+ * @author Your Name
+ * @version 1.0.0
+ */
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateCartItemById = exports.deleteCartItemById = exports.getCartItemOfUserById = exports.createCartItem = void 0;
 const client_1 = __importDefault(require("../client"));
-// Create a new cart item
+/**
+ * @function createCartItem
+ * @description Thêm sản phẩm vào giỏ hàng hoặc cập nhật số lượng nếu đã tồn tại với stock validation
+ * @param {Request} req - Express request object với body data
+ * @param {Response} res - Express response object
+ * @returns {Promise<void>}
+ *
+ * @example
+ * // POST /create-cart-items
+ * // Request body
+ * {
+ *   "productId": 1,
+ *   "quantity": 2,
+ *   "userId": 1
+ * }
+ *
+ * // Response khi tạo mới
+ * {
+ *   "message": "Đã thêm sản phẩm vào giỏ hàng.",
+ *   "data": {
+ *     "id": 1,
+ *     "userId": 1,
+ *     "productId": 1,
+ *     "quantity": 2
+ *   }
+ * }
+ *
+ * // Response khi cập nhật
+ * {
+ *   "message": "Đã cập nhật số lượng sản phẩm trong giỏ hàng.",
+ *   "data": {
+ *     "id": 1,
+ *     "userId": 1,
+ *     "productId": 1,
+ *     "quantity": 5
+ *   }
+ * }
+ */
 const createCartItem = async (req, res) => {
     try {
         const { productId, quantity, userId } = req.body;
-        // Kiểm tra dữ liệu đầu vào
+        // Kiểm tra dữ liệu đầu vào bắt buộc và validate kiểu dữ liệu
         if (!productId || !quantity || isNaN(userId)) {
             res.status(400).json({
                 message: "Thiếu thông tin cần thiết.",
@@ -17,19 +60,20 @@ const createCartItem = async (req, res) => {
             });
             return;
         }
-        // Sử dụng transaction để đảm bảo tính nhất quán dữ liệu
+        // Sử dụng transaction để đảm bảo tính nhất quán dữ liệu giữa cart và stock
         const result = await client_1.default.$transaction(async (tx) => {
-            // Kiểm tra sản phẩm có tồn tại và đủ số lượng không
+            // Kiểm tra sản phẩm có tồn tại và đủ số lượng trong kho không
             const product = await tx.product.findUnique({
                 where: { id: Number(productId) },
             });
             if (!product) {
                 throw new Error("PRODUCT_NOT_FOUND");
             }
+            // Kiểm tra stock có đủ cho số lượng yêu cầu không
             if (product.stock < Number(quantity)) {
                 throw new Error(`INSUFFICIENT_STOCK:${product.stock}`);
             }
-            // Kiểm tra xem sản phẩm đã có trong giỏ chưa
+            // Kiểm tra xem sản phẩm đã có trong giỏ hàng của user chưa
             const existingCartItem = await tx.cartItem.findFirst({
                 where: {
                     userId,
@@ -37,7 +81,7 @@ const createCartItem = async (req, res) => {
                 },
             });
             if (existingCartItem) {
-                // Kiểm tra tổng số lượng sau khi cộng thêm
+                // Kiểm tra tổng số lượng sau khi cộng thêm có vượt quá stock không
                 const totalQuantity = existingCartItem.quantity + Number(quantity);
                 if (product.stock < totalQuantity) {
                     throw new Error(`INSUFFICIENT_STOCK_TOTAL:${existingCartItem.quantity}:${product.stock - existingCartItem.quantity}`);
@@ -49,7 +93,7 @@ const createCartItem = async (req, res) => {
                         quantity: totalQuantity,
                     },
                 });
-                // Trừ stock của sản phẩm (chỉ trừ số lượng mới thêm)
+                // Trừ stock của sản phẩm (chỉ trừ số lượng mới thêm vào giỏ hàng)
                 await tx.product.update({
                     where: { id: Number(productId) },
                     data: {
@@ -59,7 +103,7 @@ const createCartItem = async (req, res) => {
                 return { type: "update", data: updatedCartItem };
             }
             else {
-                // Tạo mới cart item
+                // Tạo mới cart item nếu sản phẩm chưa có trong giỏ hàng
                 const newCartItem = await tx.cartItem.create({
                     data: {
                         userId,
@@ -67,7 +111,7 @@ const createCartItem = async (req, res) => {
                         quantity: Number(quantity),
                     },
                 });
-                // Trừ stock của sản phẩm
+                // Trừ stock của sản phẩm khi thêm vào giỏ hàng
                 await tx.product.update({
                     where: { id: Number(productId) },
                     data: {
@@ -77,7 +121,7 @@ const createCartItem = async (req, res) => {
                 return { type: "create", data: newCartItem };
             }
         });
-        // Trả về response tương ứng
+        // Trả về response tương ứng với loại operation
         if (result.type === "update") {
             res.status(200).json({
                 message: "Đã cập nhật số lượng sản phẩm trong giỏ hàng.",
@@ -94,7 +138,7 @@ const createCartItem = async (req, res) => {
     }
     catch (error) {
         console.error(error);
-        // Xử lý các lỗi custom
+        // Xử lý các lỗi custom với thông báo chi tiết
         if (error.message === "PRODUCT_NOT_FOUND") {
             res.status(404).json({
                 message: "Sản phẩm không tồn tại.",
@@ -127,11 +171,55 @@ const createCartItem = async (req, res) => {
     }
 };
 exports.createCartItem = createCartItem;
-// Get a specific cart item by ID
+/**
+ * @function getCartItemOfUserById
+ * @description Lấy thông tin giỏ hàng của một người dùng với đầy đủ thông tin sản phẩm và reviews
+ * @param {Request} req - Express request object với params.id
+ * @param {Response} res - Express response object
+ * @returns {Promise<void>}
+ *
+ * @example
+ * // GET /get-cart-items-of-user/1
+ * // Response
+ * {
+ *   "message": "Cart items fetched successfully",
+ *   "data": {
+ *     "user": {
+ *       "id": 1,
+ *       "fullName": "John Doe",
+ *       "email": "john@example.com",
+ *       "phone": "0123456789",
+ *       "address": "123 Main St"
+ *     },
+ *     "products": [
+ *       {
+ *         "cartItemId": 1,
+ *         "productId": 1,
+ *         "name": "Laptop Gaming",
+ *         "price": 25000000,
+ *         "quantity": 2,
+ *         "category": {
+ *           "id": 1,
+ *           "name": "Laptop",
+ *           "slug": "laptop"
+ *         },
+ *         "reviews": [
+ *           {
+ *             "reviewId": 1,
+ *             "rating": 5,
+ *             "comment": "Sản phẩm rất tốt",
+ *             "user": { "id": 1, "fullName": "Jane Doe" }
+ *           }
+ *         ]
+ *       }
+ *     ]
+ *   }
+ * }
+ */
 const getCartItemOfUserById = async (req, res) => {
     try {
         const { id: userId } = req.params;
-        // Tìm người dùng và lấy các cart item cùng với thông tin sản phẩm
+        // Tìm người dùng và lấy các cart item cùng với thông tin sản phẩm chi tiết
         const userWithCart = await client_1.default.user.findUnique({
             where: { id: parseInt(userId) },
             select: {
@@ -168,11 +256,12 @@ const getCartItemOfUserById = async (req, res) => {
                 },
             },
         });
+        // Kiểm tra user có tồn tại không
         if (!userWithCart) {
             res.status(404).json({ message: "User not found" });
             return;
         }
-        // Chuyển đổi cấu trúc để nhóm sản phẩm lại
+        // Chuyển đổi cấu trúc dữ liệu để nhóm sản phẩm lại cho dễ sử dụng
         const cartData = {
             user: {
                 id: userWithCart.id,
@@ -207,14 +296,47 @@ const getCartItemOfUserById = async (req, res) => {
     }
 };
 exports.getCartItemOfUserById = getCartItemOfUserById;
-// Delete a cart item
+/**
+ * @function deleteCartItemById
+ * @description Xóa một sản phẩm khỏi giỏ hàng và hoàn lại stock
+ * @param {Request} req - Express request object với params.id
+ * @param {Response} res - Express response object
+ * @returns {Promise<void>}
+ *
+ * @example
+ * // DELETE /delete-cart-items/1
+ * // Response
+ * {
+ *   "message": "Cart item deleted successfully"
+ * }
+ */
 const deleteCartItemById = async (req, res) => {
     try {
         const { id } = req.params;
+        // Tìm cart item trước khi xóa để kiểm tra tồn tại và lấy thông tin
         const cartItem = await client_1.default.cartItem.findUnique({
             where: { id: parseInt(id) },
         });
-        await client_1.default.cartItem.delete({ where: { id: parseInt(id) } });
+        if (!cartItem) {
+            res.status(404).json({ message: "Cart item not found" });
+            return;
+        }
+        // Sử dụng transaction để hoàn lại stock khi xóa cart item
+        await client_1.default.$transaction(async (tx) => {
+            // Cộng lại stock cho sản phẩm
+            await tx.product.update({
+                where: { id: cartItem.productId },
+                data: {
+                    stock: {
+                        increment: cartItem.quantity,
+                    },
+                },
+            });
+            // Xóa cart item khỏi database
+            await tx.cartItem.delete({
+                where: { id: parseInt(id) },
+            });
+        });
         res.status(200).json({ message: "Cart item deleted successfully" });
     }
     catch (error) {
@@ -223,11 +345,37 @@ const deleteCartItemById = async (req, res) => {
     }
 };
 exports.deleteCartItemById = deleteCartItemById;
-// Update a cart item
+/**
+ * @function updateCartItemById
+ * @description Cập nhật số lượng sản phẩm trong giỏ hàng với stock management
+ * @param {Request} req - Express request object với params.id và body data
+ * @param {Response} res - Express response object
+ * @returns {Promise<void>}
+ *
+ * @example
+ * // PUT /update-cart-items/1
+ * // Request body
+ * {
+ *   "quantity": 3,
+ *   "userId": 1
+ * }
+ *
+ * // Response
+ * {
+ *   "message": "Cart item updated successfully",
+ *   "data": {
+ *     "id": 1,
+ *     "userId": 1,
+ *     "productId": 1,
+ *     "quantity": 3
+ *   }
+ * }
+ */
 const updateCartItemById = async (req, res) => {
     try {
         const { id } = req.params;
         const { quantity, userId } = req.body;
+        // Tìm cart item cần cập nhật và kiểm tra ownership
         const cartItem = await client_1.default.cartItem.findUnique({
             where: { id: parseInt(id) },
         });
@@ -235,7 +383,7 @@ const updateCartItemById = async (req, res) => {
             res.status(404).json({ message: "Cart item not found", data: null });
             return;
         }
-        // Lấy thông tin sản phẩm
+        // Lấy thông tin sản phẩm để kiểm tra stock availability
         const product = await client_1.default.product.findUnique({
             where: { id: cartItem.productId },
         });
@@ -243,7 +391,7 @@ const updateCartItemById = async (req, res) => {
             res.status(404).json({ message: "Product not found", data: null });
             return;
         }
-        // Tính lại số lượng stock: cộng lại số lượng cũ, trừ số lượng mới
+        // Tính lại số lượng stock: cộng lại số lượng cũ trong giỏ hàng, trừ số lượng mới
         const stockAfterUpdate = product.stock + cartItem.quantity - Number(quantity);
         if (stockAfterUpdate < 0) {
             res.status(400).json({
@@ -252,14 +400,14 @@ const updateCartItemById = async (req, res) => {
             });
             return;
         }
-        // Transaction: cập nhật product và cart item
+        // Sử dụng transaction để đảm bảo tính nhất quán giữa cart và stock
         const result = await client_1.default.$transaction(async (tx) => {
             // Cập nhật lại stock của sản phẩm
             await tx.product.update({
                 where: { id: cartItem.productId },
                 data: { stock: stockAfterUpdate },
             });
-            // Cập nhật lại cart item
+            // Cập nhật lại cart item với số lượng mới
             const updatedCartItem = await tx.cartItem.update({
                 where: { id: parseInt(id) },
                 data: { quantity: Number(quantity) },

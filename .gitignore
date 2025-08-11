@@ -3,3 +3,7 @@ node_modules
 .env
 
 /src/generated/prisma
+
+.vercel
+# Xóa hoặc comment dòng này trong .gitignore
+# dist

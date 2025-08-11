@@ -6,12 +6,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const dotenv_1 = __importDefault(require("dotenv"));
-const user_routes_1 = __importDefault(require("./routes/user.routes"));
-const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
+const index_routes_1 = __importDefault(require("./routes/index.routes"));
 const path_1 = __importDefault(require("path"));
 const cors_1 = __importDefault(require("cors"));
 const http_1 = __importDefault(require("http"));
 const socket_io_1 = require("socket.io");
+const conversation_controllers_1 = require("./controllers/conversation.controllers");
 // Load biến môi trường
 dotenv_1.default.config();
 const app = (0, express_1.default)();
@@ -35,8 +35,7 @@ app.use((0, cors_1.default)({
 app.use(express_1.default.json());
 app.use("/api/v1/image/static", express_1.default.static(path_1.default.join(__dirname, "..", "public")));
 // Routes
-app.use("/api/v1/", user_routes_1.default);
-app.use("/api/v1/auth", auth_routes_1.default);
+app.use("/api/v1", index_routes_1.default);
 // Start server (HTTP + WebSocket)
 server.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
@@ -69,9 +68,38 @@ io.on("connection", (socket) => {
         });
         console.log("Danh sách người dùng có trong sever: ", users);
     });
-    socket.on("send_message", (data) => {
-        // console.log('💬 Received message:', data);
+    socket.on("send_message", async (data) => {
         console.log("Danh sách người dùng có trong sever: ", users);
+        try {
+            // Tạo mock request và response objects để gọi controller
+            const mockReq = {
+                body: {
+                    senderId: data.from,
+                    receiverId: data.to === 'admin' ? 1 : data.to, // Nếu gửi cho admin thì receiverId = 1
+                    content: data.message,
+                    role: data.role
+                }
+            };
+            const mockRes = {
+                status: (code) => ({
+                    json: (data) => {
+                        if (code === 201) {
+                            console.log('✅ Tin nhắn đã được lưu vào database:', data);
+                        }
+                        else {
+                            console.error('❌ Lỗi lưu tin nhắn vào database');
+                        }
+                        return mockRes;
+                    }
+                }),
+                json: (data) => mockRes
+            };
+            // Gọi controller function trực tiếp
+            await (0, conversation_controllers_1.saveChatMessage)(mockReq, mockRes);
+        }
+        catch (error) {
+            console.error('❌ Lỗi khi lưu tin nhắn:', error);
+        }
         // Lưu tin nhắn vào mảng
         messages.push(data);
         // Gửi tin nhắn cho admin
@@ -104,8 +132,44 @@ io.on("connection", (socket) => {
         });
     });
     // Xử lý tin nhắn từ admin gửi cho user cụ thể
-    socket.on("admin_send_message", (data) => {
+    socket.on("admin_send_message", async (data) => {
         console.log("💬 Admin sending message to user:", data);
+        try {
+            // Kiểm tra xem có phải admin đang nhắn tin với admin khác không
+            if (data.role === 'admin' && data.target_user_id && data.target_user_id !== data.from) {
+                // Tạo mock request và response objects để gọi controller
+                const mockReq = {
+                    body: {
+                        senderId: data.from,
+                        receiverId: data.target_user_id,
+                        content: data.message,
+                        role: data.role
+                    }
+                };
+                const mockRes = {
+                    status: (code) => ({
+                        json: (data) => {
+                            if (code === 201) {
+                                console.log('✅ Tin nhắn admin đã được lưu vào database:', data);
+                            }
+                            else {
+                                console.log('❌ Lỗi lưu tin nhắn admin vào database');
+                            }
+                            return mockRes;
+                        }
+                    }),
+                    json: (data) => mockRes
+                };
+                // Gọi controller function trực tiếp
+                await (0, conversation_controllers_1.saveChatMessage)(mockReq, mockRes);
+            }
+            else {
+                console.log('ℹ️ Admin không thể nhắn tin với admin khác hoặc thiếu thông tin người nhận');
+            }
+        }
+        catch (error) {
+            console.error('❌ Lỗi khi lưu tin nhắn admin:', error);
+        }
         // Lưu tin nhắn vào mảng
         messages.push(data);
         // Gửi tin nhắn cho user cụ thể

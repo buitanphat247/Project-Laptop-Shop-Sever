@@ -1,4 +1,10 @@
 "use strict";
+/**
+ * @fileoverview News Management Controller
+ * @description Xử lý logic quản lý tin tức/bài viết (CRUD operations) với slug tự động
+ * @author Your Name
+ * @version 1.0.0
+ */
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -7,11 +13,35 @@ exports.deleteNewsById = exports.updateNewsById = exports.createNews = exports.g
 const client_1 = __importDefault(require("../client"));
 const slugify_1 = __importDefault(require("slugify"));
 /**
- * Lấy danh sách bài viết theo id user (authorId)
- * GET /news-of-user/:userId
+ * @function getNewsByUserId
+ * @description Lấy danh sách bài viết theo ID người dùng (authorId)
+ * @param {Request} req - Express request object với params.userId
+ * @param {Response} res - Express response object
+ * @returns {Promise<void>}
+ *
+ * @example
+ * // GET /news-of-user/1
+ * // Response
+ * {
+ *   "message": "Lấy danh sách news theo user thành công",
+ *   "data": [
+ *     {
+ *       "id": 1,
+ *       "title": "Tin tức mới nhất",
+ *       "slug": "tin-tuc-moi-nhat",
+ *       "content": "Nội dung bài viết...",
+ *       "author": {
+ *         "id": 1,
+ *         "fullName": "John Doe",
+ *         "email": "john@example.com"
+ *       }
+ *     }
+ *   ]
+ * }
  */
 const getNewsByUserId = async (req, res) => {
     try {
+        // Validate userId từ params
         const userId = Number(req.params.userId);
         if (isNaN(userId)) {
             res.status(400).json({
@@ -20,6 +50,7 @@ const getNewsByUserId = async (req, res) => {
             });
             return;
         }
+        // Lấy danh sách bài viết của user cụ thể với thông tin author
         const newsList = await client_1.default.news.findMany({
             where: { authorId: userId },
             include: {
@@ -47,20 +78,52 @@ const getNewsByUserId = async (req, res) => {
     }
 };
 exports.getNewsByUserId = getNewsByUserId;
-// Lấy danh sách news kèm thông tin user (author) + hỗ trợ phân trang (page, limit)
+/**
+ * @function getNews
+ * @description Lấy danh sách tất cả bài viết với phân trang và thông tin tác giả
+ * @param {Request} req - Express request object với query params
+ * @param {Response} res - Express response object
+ * @returns {Promise<void>}
+ *
+ * @example
+ * // GET /news?page=1&limit=10
+ * // Response
+ * {
+ *   "message": "Lấy danh sách news thành công",
+ *   "data": [
+ *     {
+ *       "id": 1,
+ *       "title": "Tin tức mới nhất",
+ *       "slug": "tin-tuc-moi-nhat",
+ *       "content": "Nội dung bài viết...",
+ *       "author": {
+ *         "id": 1,
+ *         "fullName": "John Doe",
+ *         "email": "john@example.com"
+ *       }
+ *     }
+ *   ],
+ *   "pagination": {
+ *     "page": 1,
+ *     "limit": 10,
+ *     "total": 50,
+ *     "totalPages": 5
+ *   }
+ * }
+ */
 const getNews = async (req, res) => {
     try {
-        // Lấy page và limit từ query, mặc định page=1, limit=10
+        // Lấy tham số phân trang từ query string
         const page = Number(req.query.page) || 1;
         const limit = Number(req.query.limit) || 10;
         const skip = (page - 1) * limit;
-        // Lấy tổng số bản ghi
+        // Lấy tổng số bài viết để tính pagination
         const total = await client_1.default.news.count();
-        // Lấy danh sách news với phân trang
+        // Lấy danh sách bài viết với phân trang và thông tin tác giả
         const newsList = await client_1.default.news.findMany({
             skip,
             take: limit,
-            orderBy: { createdAt: "desc" },
+            orderBy: { createdAt: "desc" }, // Sắp xếp theo thời gian tạo mới nhất
             include: {
                 author: {
                     select: {
@@ -92,12 +155,35 @@ const getNews = async (req, res) => {
     }
 };
 exports.getNews = getNews;
-// Lấy news theo id
+/**
+ * @function getNewsById
+ * @description Lấy thông tin chi tiết của một bài viết theo ID
+ * @param {Request} req - Express request object với params.id
+ * @param {Response} res - Express response object
+ * @returns {Promise<void>}
+ *
+ * @example
+ * // GET /get-news/1
+ * // Response
+ * {
+ *   "message": "Lấy news thành công",
+ *   "data": {
+ *     "id": 1,
+ *     "title": "Tin tức mới nhất",
+ *     "slug": "tin-tuc-moi-nhat",
+ *     "content": "Nội dung chi tiết bài viết...",
+ *     "thumbnail": "image.jpg",
+ *     "published": true
+ *   }
+ * }
+ */
 const getNewsById = async (req, res) => {
     try {
+        // Tìm bài viết theo ID trong database
         const news = await client_1.default.news.findUnique({
             where: { id: Number(req.params.id) },
         });
+        // Kiểm tra bài viết có tồn tại không
         if (!news) {
             res.status(404).json({ message: "News not found", data: null });
             return;
@@ -116,18 +202,48 @@ const getNewsById = async (req, res) => {
     }
 };
 exports.getNewsById = getNewsById;
-// Tạo mới news
+/**
+ * @function createNews
+ * @description Tạo bài viết mới với slug tự động từ title
+ * @param {Request} req - Express request object với body data
+ * @param {Response} res - Express response object
+ * @returns {Promise<void>}
+ *
+ * @example
+ * // POST /create-news
+ * // Request body
+ * {
+ *   "title": "Tin tức mới nhất về công nghệ",
+ *   "content": "Nội dung bài viết chi tiết...",
+ *   "thumbnail": "tech-news.jpg",
+ *   "desc": "Mô tả ngắn gọn",
+ *   "userId": 1
+ * }
+ *
+ * // Response
+ * {
+ *   "message": "News created",
+ *   "data": {
+ *     "id": 1,
+ *     "title": "Tin tức mới nhất về công nghệ",
+ *     "slug": "tin-tuc-moi-nhat-ve-cong-nghe",
+ *     "content": "Nội dung bài viết chi tiết...",
+ *     "published": true
+ *   }
+ * }
+ */
 const createNews = async (req, res) => {
     try {
         const { title, content, thumbnail, desc, userId: authorId } = req.body;
-        // Tự động tạo slug từ title sử dụng slugify
+        // Tự động tạo slug từ title sử dụng slugify để tạo URL thân thiện
         const slug = (0, slugify_1.default)(title, {
             lower: true, // chuyển về chữ thường
             strict: true, // loại bỏ ký tự đặc biệt
             locale: "vi", // hỗ trợ tiếng Việt
         });
-        // Mặc định published = true khi tạo mới
+        // Mặc định published = true khi tạo mới bài viết
         const published = true;
+        // Tạo bài viết mới trong database
         const newNews = await client_1.default.news.create({
             data: { title, slug, content, thumbnail, published, authorId, desc },
         });
@@ -145,7 +261,35 @@ const createNews = async (req, res) => {
     }
 };
 exports.createNews = createNews;
-// Cập nhật news
+/**
+ * @function updateNewsById
+ * @description Cập nhật thông tin bài viết theo ID với slug tự động
+ * @param {Request} req - Express request object với params.id và body data
+ * @param {Response} res - Express response object
+ * @returns {Promise<void>}
+ *
+ * @example
+ * // PUT /update-news/1
+ * // Request body
+ * {
+ *   "title": "Tin tức cập nhật về công nghệ",
+ *   "content": "Nội dung cập nhật...",
+ *   "thumbnail": "updated-tech.jpg",
+ *   "desc": "Mô tả cập nhật",
+ *   "authorId": 1
+ * }
+ *
+ * // Response
+ * {
+ *   "message": "News updated",
+ *   "data": {
+ *     "id": 1,
+ *     "title": "Tin tức cập nhật về công nghệ",
+ *     "slug": "tin-tuc-cap-nhat-ve-cong-nghe",
+ *     "content": "Nội dung cập nhật..."
+ *   }
+ * }
+ */
 const updateNewsById = async (req, res) => {
     try {
         const { title, content, thumbnail, authorId, desc } = req.body;
@@ -157,12 +301,13 @@ const updateNewsById = async (req, res) => {
                 locale: "vi",
             })
             : undefined;
-        // Mặc định published = true khi tạo mới
+        // Mặc định published = true khi cập nhật
         const published = true;
+        // Cập nhật bài viết với conditional updates
         const updatedNews = await client_1.default.news.update({
             where: { id: Number(req.params.id) },
             data: {
-                ...(title && { title, slug }),
+                ...(title && { title, slug }), // Chỉ cập nhật nếu có title
                 ...(content && { content }),
                 ...(thumbnail && { thumbnail }),
                 ...(published !== undefined && { published }),
@@ -184,9 +329,24 @@ const updateNewsById = async (req, res) => {
     }
 };
 exports.updateNewsById = updateNewsById;
-// Xoá news
+/**
+ * @function deleteNewsById
+ * @description Xóa bài viết khỏi hệ thống theo ID
+ * @param {Request} req - Express request object với params.id
+ * @param {Response} res - Express response object
+ * @returns {Promise<void>}
+ *
+ * @example
+ * // DELETE /delete-news/1
+ * // Response
+ * {
+ *   "message": "News deleted",
+ *   "data": null
+ * }
+ */
 const deleteNewsById = async (req, res) => {
     try {
+        // Xóa bài viết theo ID từ database
         await client_1.default.news.delete({
             where: { id: Number(req.params.id) },
         });
