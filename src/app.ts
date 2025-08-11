@@ -7,6 +7,7 @@ import path from "path";
 import cors from "cors";
 import http from "http";
 import { Server } from "socket.io";
+import { saveChatMessage } from "./controllers/conversation.controllers";
 
 // Load biến môi trường
 dotenv.config();
@@ -83,9 +84,39 @@ io.on("connection", (socket) => {
     console.log("Danh sách người dùng có trong sever: ", users);
   });
 
-  socket.on("send_message", (data) => {
-    // console.log('💬 Received message:', data);
+  socket.on("send_message", async (data) => {
     console.log("Danh sách người dùng có trong sever: ", users);
+
+    try {
+      // Tạo mock request và response objects để gọi controller
+      const mockReq = {
+        body: {
+          senderId: data.from,
+          receiverId: data.to === 'admin' ? 1 : data.to, // Nếu gửi cho admin thì receiverId = 1
+          content: data.message,
+          role: data.role
+        }
+      } as Request;
+
+      const mockRes = {
+        status: (code: number) => ({
+          json: (data: any) => {
+            if (code === 201) {
+              console.log('✅ Tin nhắn đã được lưu vào database:', data);
+            } else {
+              console.error('❌ Lỗi lưu tin nhắn vào database');
+            }
+            return mockRes;
+          }
+        }),
+        json: (data: any) => mockRes
+      } as Response;
+
+      // Gọi controller function trực tiếp
+      await saveChatMessage(mockReq, mockRes);
+    } catch (error) {
+      console.error('❌ Lỗi khi lưu tin nhắn:', error);
+    }
 
     // Lưu tin nhắn vào mảng
     messages.push(data);
@@ -128,8 +159,44 @@ io.on("connection", (socket) => {
   });
 
   // Xử lý tin nhắn từ admin gửi cho user cụ thể
-  socket.on("admin_send_message", (data) => {
+  socket.on("admin_send_message", async (data) => {
     console.log("💬 Admin sending message to user:", data);
+    
+    try {
+      // Kiểm tra xem có phải admin đang nhắn tin với admin khác không
+      if (data.role === 'admin' && data.target_user_id && data.target_user_id !== data.from) {
+        // Tạo mock request và response objects để gọi controller
+        const mockReq = {
+          body: {
+            senderId: data.from,
+            receiverId: data.target_user_id,
+            content: data.message,
+            role: data.role
+          }
+        } as Request;
+
+        const mockRes = {
+          status: (code: number) => ({
+            json: (data: any) => {
+              if (code === 201) {
+                console.log('✅ Tin nhắn admin đã được lưu vào database:', data);
+              } else {
+                console.log('❌ Lỗi lưu tin nhắn admin vào database');
+              }
+              return mockRes;
+            }
+          }),
+          json: (data: any) => mockRes
+        } as Response;
+
+        // Gọi controller function trực tiếp
+        await saveChatMessage(mockReq, mockRes);
+      } else {
+        console.log('ℹ️ Admin không thể nhắn tin với admin khác hoặc thiếu thông tin người nhận');
+      }
+    } catch (error) {
+      console.error('❌ Lỗi khi lưu tin nhắn admin:', error);
+    }
     
     // Lưu tin nhắn vào mảng
     messages.push(data);
@@ -199,3 +266,4 @@ io.on("connection", (socket) => {
     }
   });
 });
+

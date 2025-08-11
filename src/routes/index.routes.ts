@@ -17,6 +17,8 @@ import orderRouter from "./order.routes";
 import permissionRouter from "./permission.routes";
 import fileRouter from "./file.routes";
 import favoriteProductRouter from "./favoriteProduct.routes";
+import conversationRouter from "./conversation.routes";
+import messageRouter from "./message.routes";
 
 /**
  * @constant mainRouter
@@ -137,14 +139,42 @@ mainRouter.use("/", permissionRouter);
 mainRouter.use("/", fileRouter);
 
 /**
- * @description Export main router để sử dụng trong app.ts
+ * @description Mount favorite product management routes
+ * @path /
  * @example
- * // Trong app.ts
- * import mainRouter from "./routes/index.routes";
- * app.use("/api/v1", mainRouter);
+ * // Các routes sẽ có prefix: /api/v1
+ * // - GET /api/v1/favorite-products
+ * // - POST /api/v1/add-favorite-product
+ * // - DELETE /api/v1/remove-favorite-product/:id
  */
-
 mainRouter.use("/", favoriteProductRouter);
+
+/**
+ * @description Mount conversation management routes
+ * @path /
+ * @example
+ * // Các routes sẽ có prefix: /api/v1
+ * // - POST /api/v1/create-conversation
+ * // - GET /api/v1/conversations/:userId
+ * // - GET /api/v1/conversation/:id
+ * // - PUT /api/v1/conversation/:id
+ * // - DELETE /api/v1/conversation/:id
+ */
+mainRouter.use("/", conversationRouter);
+
+/**
+ * @description Mount message management routes
+ * @path /
+ * @example
+ * // Các routes sẽ có prefix: /api/v1
+ * // - POST /api/v1/send-message
+ * // - GET /api/v1/messages/:conversationId
+ * // - GET /api/v1/message/:id
+ * // - PUT /api/v1/message/:id/status
+ * // - PUT /api/v1/conversation/:conversationId/read/:userId
+ * // - DELETE /api/v1/message/:id
+ */
+mainRouter.use("/", messageRouter);
 
 /**
  * @description Export main router để sử dụng trong app.ts

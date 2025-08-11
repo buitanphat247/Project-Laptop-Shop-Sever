@@ -53,6 +53,21 @@ import {
   deleteNewsById,
   getNewsByUserId,
 } from "../controllers/news.controllers";
+import {
+  createConversation,
+  getConversationsByUserId,
+  getConversationById,
+  updateConversation,
+  deleteConversation
+} from "../src/controllers/conversation.controllers";
+import {
+  sendMessage,
+  getMessagesByConversationId,
+  getMessageById,
+  updateMessageStatus,
+  markMessageAsRead,
+  deleteMessage
+} from "../src/controllers/message.controllers";
 import vnpay from "../config/vnpay";
 const userRouter = Router();
 import { ProductCode, VnpLocale } from "vnpay";
@@ -789,4 +804,40 @@ userRouter.delete(
     }
   }
 );
+
+// ==================== CONVERSATION ROUTES ====================
+// Tạo conversation mới
+userRouter.post("/create-conversation", createConversation);
+
+// Lấy danh sách conversation của user
+userRouter.get("/conversations/:userId", getConversationsByUserId);
+
+// Lấy conversation theo ID
+userRouter.get("/conversation/:id", getConversationById);
+
+// Cập nhật conversation
+userRouter.put("/conversation/:id", updateConversation);
+
+// Xóa conversation
+userRouter.delete("/conversation/:id", deleteConversation);
+
+// ==================== MESSAGE ROUTES ====================
+// Gửi tin nhắn mới
+userRouter.post("/send-message", sendMessage);
+
+// Lấy tin nhắn theo conversation ID (có phân trang)
+userRouter.get("/messages/:conversationId", getMessagesByConversationId);
+
+// Lấy tin nhắn theo ID
+userRouter.get("/message/:id", getMessageById);
+
+// Cập nhật trạng thái tin nhắn
+userRouter.put("/message/:id/status", updateMessageStatus);
+
+// Đánh dấu tin nhắn đã đọc
+userRouter.put("/conversation/:conversationId/read/:userId", markMessageAsRead);
+
+// Xóa tin nhắn
+userRouter.delete("/message/:id", deleteMessage);
+
 export default userRouter;

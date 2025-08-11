@@ -25,6 +25,14 @@ function transformData(model, item) {
             return { ...item, createdAt: parseValidDate(item.createdAt) };
         case 'permission':
             return { ...item, createdAt: parseValidDate(item.createdAt) };
+        case 'conversation':
+            return { 
+                ...item, 
+                lastMessageAt: parseValidDate(item.lastMessageAt),
+                updatedAt: parseValidDate(item.updatedAt)
+            };
+        case 'message':
+            return { ...item, createdAt: parseValidDate(item.createdAt) };
         default:
             return item;
     }
@@ -41,8 +49,9 @@ const modelMap = {
     reviews: 'review',
     permissions: 'permission',
     rolePermissions: 'rolePermission',
-    favoriteProducts: 'favoriteProduct' // <-- Thêm dòng này
-
+    favoriteProducts: 'favoriteProduct',
+    conversations: 'conversation',
+    messages: 'message'
 };
 
 async function restoreAll() {
@@ -51,7 +60,7 @@ async function restoreAll() {
         console.log('🔄 Đang reset và push lại database bằng Prisma...');
         execSync('npx prisma db push --force-reset', { stdio: 'inherit' });
 
-        const filePath = path.join(__dirname, 'backup_2025-08-07T07-31-04-529Z.json');
+        const filePath = path.join(__dirname, 'backup_2025-08-10T15-41-09-248Z.json');
 
         if (!fs.existsSync(filePath)) {
             console.error(`❌ File backup không tồn tại: ${filePath}`);
