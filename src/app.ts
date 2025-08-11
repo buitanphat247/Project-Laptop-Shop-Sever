@@ -30,12 +30,11 @@ const io = new Server(server, {
 // Middlewares
 app.use(
   cors(
-    // {
-    //   origin: "http://localhost:3000",
-    //   methods: ["GET", "POST", "PUT", "DELETE"],
-    //   credentials: true,
-    // }
-
+    {
+      origin: "http://localhost:3000",
+      methods: ["GET", "POST", "PUT", "DELETE"],
+      credentials: true,
+    }
   )
 );
 app.use(express.json());

@@ -7,7 +7,7 @@
     "dev": "nodemon src/app.ts",
     "build": "tsc",
     "watch": "nodemon --exec \"npm run build && npm start\"",
-    "vercel-build": "npm run build"
+    "vercel-build": "echo 'Skip build on Vercel'"
   },
   "keywords": [],
   "author": "",
