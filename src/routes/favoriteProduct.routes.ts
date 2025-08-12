@@ -11,7 +11,7 @@ import {
 const favoriteProductRouter = Router();
 
 // Thêm sản phẩm vào yêu thích
-favoriteProductRouter.post("/create-favorite-product", createFavoriteProduct);
+favoriteProductRouter.post("/create-favorite-product", verifyToken, checkPermission, createFavoriteProduct);
 
 // Lấy tất cả sản phẩm yêu thích của user
 favoriteProductRouter.get("/favorite-products/:userId", verifyToken, checkPermission, getFavoriteProductsOfUser);

@@ -28,7 +28,7 @@ const io = new socket_io_1.Server(server, {
 });
 // Middlewares
 app.use((0, cors_1.default)({
-    origin: "http://localhost:3000",
+    origin: true,
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
 }));
