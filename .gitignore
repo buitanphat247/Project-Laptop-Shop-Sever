@@ -7,3 +7,4 @@ node_modules
 .vercel
 # Xóa hoặc comment dòng này trong .gitignore
 # dist
+.vercel
