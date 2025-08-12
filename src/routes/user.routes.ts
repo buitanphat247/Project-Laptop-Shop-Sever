@@ -19,7 +19,11 @@ const userRouter = Router();
  * @middleware verifyToken, checkPermission
  * @returns {message: string, data: User[]}
  */
-userRouter.get("/user", verifyToken, checkPermission, getUser);
+userRouter.get(
+  "/user",
+  verifyToken, checkPermission,
+  getUser
+);
 
 /**
  * @route POST /create-account

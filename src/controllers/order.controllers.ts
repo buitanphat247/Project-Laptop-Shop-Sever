@@ -60,7 +60,7 @@ export const createOrder = async (req: Request, res: Response) => {
     }
 
     // Tạo order và orderItems cùng lúc sử dụng nested create
-    const order = await prisma.order.create({
+    const order = await prisma.orderList.create({
       data: {
         userId,
         shipName,
@@ -134,7 +134,7 @@ export const getOrderById = async (req: Request, res: Response) => {
     const { id } = req.params;
     
     // Tìm đơn hàng với thông tin chi tiết
-    const order = await prisma.order.findUnique({
+    const order = await prisma.orderList.findUnique({
       where: { id: Number(id) },
       include: {
         orderItems: {
@@ -201,7 +201,7 @@ export const getOrdersByUserId = async (req: Request, res: Response) => {
 
     // Lấy đơn hàng và tổng số đơn hàng cùng lúc
     const [orders, total] = await Promise.all([
-      prisma.order.findMany({
+      prisma.orderList.findMany({
         where: { userId: Number(userId) },
         include: {
           orderItems: {
@@ -221,7 +221,7 @@ export const getOrdersByUserId = async (req: Request, res: Response) => {
         skip,
         take: pageSize,
       }),
-      prisma.order.count({
+      prisma.orderList.count({
         where: { userId: Number(userId) },
       }),
     ]);
@@ -284,7 +284,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
 
     // Lấy tất cả đơn hàng và tổng số đơn hàng
     const [orders, total] = await Promise.all([
-      prisma.order.findMany({
+      prisma.orderList.findMany({
         include: {
           orderItems: {
             include: { product: true },
@@ -297,7 +297,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
         skip,
         take: pageSize,
       }),
-      prisma.order.count(),
+      prisma.orderList.count(),
     ]);
 
     res.json({
@@ -345,7 +345,7 @@ export const updateOrderById = async (req: Request, res: Response) => {
     const { status } = req.body;
     
     // Cập nhật trạng thái đơn hàng
-    const order = await prisma.order.update({
+    const order = await prisma.orderList.update({
       where: { id: Number(id) },
       data: { status },
     });
@@ -386,7 +386,7 @@ export const deleteOrderById = async (req: Request, res: Response) => {
     const { id } = req.params;
     
     // Xóa đơn hàng theo ID
-    const deleted = await prisma.order.delete({
+    const deleted = await prisma.orderList.delete({
       where: { id: Number(id) },
     });
     

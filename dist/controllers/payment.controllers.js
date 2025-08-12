@@ -172,7 +172,7 @@ const handleVNPayReturn = async (req, res) => {
             },
         };
         // Tạo đơn hàng trong database với transaction để đảm bảo tính nhất quán
-        await client_1.default.order.create({
+        await client_1.default.orderList.create({
             data,
             include: { orderItems: true },
         });

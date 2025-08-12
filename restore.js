@@ -26,8 +26,8 @@ function transformData(model, item) {
         case 'permission':
             return { ...item, createdAt: parseValidDate(item.createdAt) };
         case 'conversation':
-            return { 
-                ...item, 
+            return {
+                ...item,
                 lastMessageAt: parseValidDate(item.lastMessageAt),
                 updatedAt: parseValidDate(item.updatedAt)
             };
@@ -44,7 +44,7 @@ const modelMap = {
     products: 'product',
     news: 'news',
     cartItems: 'cartItem',
-    orders: 'order',
+    orderLists: 'orderList',
     orderItems: 'orderItem',
     reviews: 'review',
     permissions: 'permission',
@@ -60,7 +60,7 @@ async function restoreAll() {
         console.log('🔄 Đang reset và push lại database bằng Prisma...');
         execSync('npx prisma db push --force-reset', { stdio: 'inherit' });
 
-        const filePath = path.join(__dirname, 'backup_2025-08-10T15-41-09-248Z.json');
+        const filePath = path.join(__dirname, 'backup_2025-08-12T17-59-55-034Z.json');
 
         if (!fs.existsSync(filePath)) {
             console.error(`❌ File backup không tồn tại: ${filePath}`);

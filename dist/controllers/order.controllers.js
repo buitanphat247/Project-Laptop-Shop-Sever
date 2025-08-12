@@ -60,7 +60,7 @@ const createOrder = async (req, res) => {
             return;
         }
         // Tạo order và orderItems cùng lúc sử dụng nested create
-        const order = await client_1.default.order.create({
+        const order = await client_1.default.orderList.create({
             data: {
                 userId,
                 shipName,
@@ -133,7 +133,7 @@ const getOrderById = async (req, res) => {
     try {
         const { id } = req.params;
         // Tìm đơn hàng với thông tin chi tiết
-        const order = await client_1.default.order.findUnique({
+        const order = await client_1.default.orderList.findUnique({
             where: { id: Number(id) },
             include: {
                 orderItems: {
@@ -198,7 +198,7 @@ const getOrdersByUserId = async (req, res) => {
         const skip = (page - 1) * pageSize;
         // Lấy đơn hàng và tổng số đơn hàng cùng lúc
         const [orders, total] = await Promise.all([
-            client_1.default.order.findMany({
+            client_1.default.orderList.findMany({
                 where: { userId: Number(userId) },
                 include: {
                     orderItems: {
@@ -218,7 +218,7 @@ const getOrdersByUserId = async (req, res) => {
                 skip,
                 take: pageSize,
             }),
-            client_1.default.order.count({
+            client_1.default.orderList.count({
                 where: { userId: Number(userId) },
             }),
         ]);
@@ -280,7 +280,7 @@ const getAllOrders = async (req, res) => {
         const skip = (page - 1) * pageSize;
         // Lấy tất cả đơn hàng và tổng số đơn hàng
         const [orders, total] = await Promise.all([
-            client_1.default.order.findMany({
+            client_1.default.orderList.findMany({
                 include: {
                     orderItems: {
                         include: { product: true },
@@ -293,7 +293,7 @@ const getAllOrders = async (req, res) => {
                 skip,
                 take: pageSize,
             }),
-            client_1.default.order.count(),
+            client_1.default.orderList.count(),
         ]);
         res.json({
             message: "Fetched all orders successfully.",
@@ -340,7 +340,7 @@ const updateOrderById = async (req, res) => {
         const { id } = req.params;
         const { status } = req.body;
         // Cập nhật trạng thái đơn hàng
-        const order = await client_1.default.order.update({
+        const order = await client_1.default.orderList.update({
             where: { id: Number(id) },
             data: { status },
         });
@@ -380,7 +380,7 @@ const deleteOrderById = async (req, res) => {
     try {
         const { id } = req.params;
         // Xóa đơn hàng theo ID
-        const deleted = await client_1.default.order.delete({
+        const deleted = await client_1.default.orderList.delete({
             where: { id: Number(id) },
         });
         res.json({ message: "Order deleted successfully.", data: deleted });

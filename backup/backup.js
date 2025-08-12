@@ -12,7 +12,7 @@ async function backup() {
     const products = await prisma.product.findMany();
     const news = await prisma.news.findMany();
     const cartItems = await prisma.cartItem.findMany();
-    const orders = await prisma.order.findMany();
+    const orderLists = await prisma.orderList.findMany();
     const orderItems = await prisma.orderItem.findMany();
     const reviews = await prisma.review.findMany();
     const roles = await prisma.role.findMany();
@@ -25,7 +25,7 @@ async function backup() {
       products,
       news,
       cartItems,
-      orders,
+      orderLists,
       orderItems,
       reviews,
       roles,
@@ -46,7 +46,7 @@ async function backup() {
     console.log(`   - Products: ${products.length}`);
     console.log(`   - News: ${news.length}`);
     console.log(`   - Cart Items: ${cartItems.length}`);
-    console.log(`   - Orders: ${orders.length}`);
+    console.log(`   - Orders: ${orderLists.length}`);
     console.log(`   - Order Items: ${orderItems.length}`);
     console.log(`   - Reviews: ${reviews.length}`);
     console.log(`   - Roles: ${roles.length}`);

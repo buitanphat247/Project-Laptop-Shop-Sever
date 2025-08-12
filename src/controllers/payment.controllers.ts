@@ -211,7 +211,7 @@ export const handleVNPayReturn = async (
     };
 
     // Tạo đơn hàng trong database với transaction để đảm bảo tính nhất quán
-    await prisma.order.create({
+    await prisma.orderList.create({
       data,
       include: { orderItems: true },
     });
