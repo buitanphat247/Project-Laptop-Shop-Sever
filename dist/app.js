@@ -40,6 +40,15 @@ app.use("/api/v1", index_routes_1.default);
 server.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
+// Test route để check connection
+app.get("/", (req, res) => {
+    res.json({
+        message: "🚀 Laptop Shop API is running!",
+        status: "success",
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || "development",
+    });
+});
 const users = new Map();
 const messages = [];
 io.on("connection", (socket) => {
@@ -140,9 +149,7 @@ io.on("connection", (socket) => {
         console.log("💬 Admin sending message to user:", data);
         try {
             // Kiểm tra xem có phải admin đang nhắn tin với admin khác không
-            if (data.role === "admin" &&
-                data.target_user_id &&
-                data.target_user_id !== data.from) {
+            if (data.role === "admin" && data.target_user_id && data.target_user_id !== data.from) {
                 // Tạo mock request và response objects để gọi controller
                 const mockReq = {
                     body: {

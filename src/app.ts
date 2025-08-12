@@ -37,18 +37,24 @@ app.use(
   })
 );
 app.use(express.json());
-app.use(
-  "/api/v1/image/static",
-  express.static(path.join(__dirname, "..", "public"))
-);
+app.use("/api/v1/image/static", express.static(path.join(__dirname, "..", "public")));
 
 // Routes
 app.use("/api/v1", mainRouter);
 
-
 // Start server (HTTP + WebSocket)
 server.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
+});
+
+// Test route để check connection
+app.get("/", (req: Request, res: Response) => {
+  res.json({
+    message: "🚀 Laptop Shop API is running!",
+    status: "success",
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || "development",
+  });
 });
 
 const users = new Map();
@@ -64,9 +70,7 @@ io.on("connection", (socket) => {
     });
 
     // Gửi danh sách users đã gửi tin nhắn cho admin
-    const adminSockets = [...users].filter(
-      ([, userData]) => userData.role === "admin"
-    );
+    const adminSockets = [...users].filter(([, userData]) => userData.role === "admin");
     const uniqueUsers = [...new Set(messages.map((msg) => msg.from))];
     const usersWithMessages = uniqueUsers
       .map((userId) => {
@@ -126,9 +130,7 @@ io.on("connection", (socket) => {
     messages.push(data);
 
     // Gửi tin nhắn cho admin
-    const adminSocketId = [...users].find(
-      ([, user]) => user.role === "admin"
-    )?.[0];
+    const adminSocketId = [...users].find(([, user]) => user.role === "admin")?.[0];
     console.log("SocketId của admin là: ", adminSocketId);
     io.to(adminSocketId).emit("receive_message", {
       ...data,
@@ -142,9 +144,7 @@ io.on("connection", (socket) => {
     });
 
     // Cập nhật danh sách users cho admin
-    const adminSockets = [...users].filter(
-      ([, userData]) => userData.role === "admin"
-    );
+    const adminSockets = [...users].filter(([, userData]) => userData.role === "admin");
     const uniqueUsers = [...new Set(messages.map((msg) => msg.from))];
     const usersWithMessages = uniqueUsers
       .map((userId) => {
@@ -170,11 +170,7 @@ io.on("connection", (socket) => {
 
     try {
       // Kiểm tra xem có phải admin đang nhắn tin với admin khác không
-      if (
-        data.role === "admin" &&
-        data.target_user_id &&
-        data.target_user_id !== data.from
-      ) {
+      if (data.role === "admin" && data.target_user_id && data.target_user_id !== data.from) {
         // Tạo mock request và response objects để gọi controller
         const mockReq = {
           body: {
@@ -189,10 +185,7 @@ io.on("connection", (socket) => {
           status: (code: number) => ({
             json: (data: any) => {
               if (code === 201) {
-                console.log(
-                  "✅ Tin nhắn admin đã được lưu vào database:",
-                  data
-                );
+                console.log("✅ Tin nhắn admin đã được lưu vào database:", data);
               } else {
                 console.log("❌ Lỗi lưu tin nhắn admin vào database");
               }
@@ -205,9 +198,7 @@ io.on("connection", (socket) => {
         // Gọi controller function trực tiếp
         await saveChatMessage(mockReq, mockRes);
       } else {
-        console.log(
-          "ℹ️ Admin không thể nhắn tin với admin khác hoặc thiếu thông tin người nhận"
-        );
+        console.log("ℹ️ Admin không thể nhắn tin với admin khác hoặc thiếu thông tin người nhận");
       }
     } catch (error) {
       console.error("❌ Lỗi khi lưu tin nhắn admin:", error);
@@ -236,17 +227,13 @@ io.on("connection", (socket) => {
 
     if (data.role === "admin" && data.targetUserId) {
       // Admin đang nhập tin nhắn cho user cụ thể
-      const targetSocketId = [...users].find(
-        ([, userData]) => userData.userId === data.targetUserId
-      )?.[0];
+      const targetSocketId = [...users].find(([, userData]) => userData.userId === data.targetUserId)?.[0];
       if (targetSocketId) {
         io.to(targetSocketId).emit("typing_start", { userId: data.userId });
       }
     } else if (data.role !== "admin") {
       // User đang nhập tin nhắn - gửi cho tất cả admin
-      const adminSockets = [...users].filter(
-        ([, userData]) => userData.role === "admin"
-      );
+      const adminSockets = [...users].filter(([, userData]) => userData.role === "admin");
       adminSockets.forEach(([adminSocketId]) => {
         io.to(adminSocketId).emit("typing_start", { userId: data.userId });
       });
@@ -260,29 +247,17 @@ io.on("connection", (socket) => {
 
     if (data.role === "admin" && data.targetUserId) {
       // Admin dừng nhập tin nhắn cho user cụ thể
-      const targetSocketId = [...users].find(
-        ([, userData]) => userData.userId === data.targetUserId
-      )?.[0];
-      console.log(
-        "🎯 Admin typing_stop - targetUserId:",
-        data.targetUserId,
-        "targetSocketId:",
-        targetSocketId
-      );
+      const targetSocketId = [...users].find(([, userData]) => userData.userId === data.targetUserId)?.[0];
+      console.log("🎯 Admin typing_stop - targetUserId:", data.targetUserId, "targetSocketId:", targetSocketId);
       if (targetSocketId) {
         io.to(targetSocketId).emit("typing_stop", { userId: data.userId });
         console.log("✅ Sent typing_stop to user:", targetSocketId);
       } else {
-        console.log(
-          "❌ Could not find targetSocketId for user:",
-          data.targetUserId
-        );
+        console.log("❌ Could not find targetSocketId for user:", data.targetUserId);
       }
     } else if (data.role !== "admin") {
       // User dừng nhập tin nhắn - gửi cho tất cả admin
-      const adminSockets = [...users].filter(
-        ([, userData]) => userData.role === "admin"
-      );
+      const adminSockets = [...users].filter(([, userData]) => userData.role === "admin");
       adminSockets.forEach(([adminSocketId]) => {
         io.to(adminSocketId).emit("typing_stop", { userId: data.userId });
       });
