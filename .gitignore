@@ -8,3 +8,4 @@ node_modules
 # Xóa hoặc comment dòng này trong .gitignore
 # dist
 .vercel
+#public
